@@ -1,8 +1,9 @@
+
 """
 DGCF | Gestor de Fundos
-Versão P001 · 0.1
-Protótipo offline — Município de Barcelos
-Python + SQLite + Streamlit
+Versão P002 · 0.2 (Demonstração)
+Alinhada com a informação da versão Tkinter 0.15
+Dados 100% fictícios — Município "Vila Nova do Norte"
 """
 
 import streamlit as st
@@ -10,160 +11,110 @@ import sqlite3
 import pandas as pd
 from pathlib import Path
 
-# -------------------------------------------------
-# Configuração
-# -------------------------------------------------
-VERSION = "P001 · 0.1"
+VERSION = "P002 · 0.2 (Demo)"
+DB_PATH = Path(__file__).parent / "dgcf_demo_dummy.db"
 
 st.set_page_config(
     page_title=f"DGCF | Gestor de Fundos ({VERSION})",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
-DB_PATH = Path(__file__).parent / "dgcf_gestor_fundos.db"
-
-# -------------------------------------------------
-# CSS personalizado (visual moderno tipo dashboard)
-# -------------------------------------------------
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 0.2rem;
-    }
-    .sub-header {
-        color: #64748b;
-        font-size: 0.95rem;
-        margin-bottom: 1.5rem;
-    }
+    .main-header { font-size: 1.7rem; font-weight: 700; color: #1e293b; margin-bottom: 0.15rem; }
+    .sub-header { color: #64748b; font-size: 0.92rem; margin-bottom: 1.2rem; }
     .kpi-card {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 1.2rem 1.4rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        background: white; border: 1px solid #e2e8f0; border-radius: 12px;
+        padding: 1.1rem 1.3rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
-    .kpi-label {
-        font-size: 0.8rem;
-        color: #64748b;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-    }
-    .kpi-value {
-        font-size: 1.6rem;
-        font-weight: 700;
-        color: #0f172a;
-        margin-top: 0.25rem;
-    }
-    .kpi-sub {
-        font-size: 0.8rem;
-        color: #94a3b8;
-        margin-top: 0.15rem;
-    }
-    .project-card {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 1.1rem 1.3rem;
-        margin-bottom: 0.9rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        transition: box-shadow 0.15s;
-    }
-    .project-card:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
+    .kpi-label { font-size: 0.78rem; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; }
+    .kpi-value { font-size: 1.55rem; font-weight: 700; color: #0f172a; margin-top: 0.2rem; }
+    .kpi-sub { font-size: 0.78rem; color: #94a3b8; margin-top: 0.12rem; }
     .status-badge {
-        display: inline-block;
-        padding: 0.2rem 0.65rem;
-        border-radius: 999px;
-        font-size: 0.75rem;
-        font-weight: 600;
+        display: inline-block; padding: 0.18rem 0.6rem; border-radius: 999px;
+        font-size: 0.72rem; font-weight: 600;
     }
     .status-em-execucao { background: #dbeafe; color: #1e40af; }
     .status-aprovada { background: #dcfce7; color: #166534; }
     .status-concluida { background: #e0e7ff; color: #3730a3; }
     .status-submetida { background: #fef3c7; color: #92400e; }
     .status-vazio { background: #f1f5f9; color: #475569; }
-    .progress-bar-bg {
-        background: #e2e8f0;
-        border-radius: 999px;
-        height: 8px;
-        margin-top: 0.4rem;
-        overflow: hidden;
-    }
-    .progress-bar-fill {
-        height: 100%;
-        border-radius: 999px;
-        background: linear-gradient(90deg, #3b82f6, #2563eb);
-    }
-    div[data-testid="stSidebar"] {
-        background: #0f172a;
-    }
-    div[data-testid="stSidebar"] * {
-        color: #e2e8f0 !important;
-    }
-    .sidebar-title {
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: white !important;
-        margin-bottom: 1.5rem;
+    .pri-1 { background: #fee2e2; color: #991b1b; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+    .pri-2 { background: #ffedd5; color: #9a3412; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+    .pri-3 { background: #fef9c3; color: #854d0e; padding: 2px 8px; border-radius: 6px; }
+    div[data-testid="stSidebar"] { background: #0f172a; }
+    div[data-testid="stSidebar"] * { color: #e2e8f0 !important; }
+    .sidebar-title { font-size: 1.1rem; font-weight: 700; color: white !important; }
+    .demo-banner {
+        background: #fef3c7; border: 1px solid #f59e0b; color: #92400e;
+        padding: 0.55rem 1rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# -------------------------------------------------
-# Funções de dados
-# -------------------------------------------------
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=30)
 def load_projetos():
     conn = sqlite3.connect(DB_PATH)
-    df = pd.read_sql_query("""
-        SELECT 
-            id, codigo, designacao, estado, programa, aviso,
-            custos_totais, adjudicado, invest_elegivel,
-            fundo_previsto, fundo_solicitado, fundo_recebido, adiantamentos,
-            pct_adiantamento, pct_exec_fisica, pct_exec_financeira, pct_inv_elegivel,
-            area
-        FROM projeto
-        ORDER BY designacao
-    """, conn)
+    df = pd.read_sql_query("SELECT * FROM projeto ORDER BY designacao", conn)
     conn.close()
-    # Garantir tipos numéricos (evita TypeError no Streamlit Cloud)
     num_cols = [
         "custos_totais", "adjudicado", "invest_elegivel", "fundo_previsto",
         "fundo_solicitado", "fundo_recebido", "adiantamentos",
-        "pct_adiantamento", "pct_exec_fisica", "pct_exec_financeira", "pct_inv_elegivel"
+        "pct_adiantamento", "pct_exec_fisica", "pct_exec_financeira",
     ]
     for col in num_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
-@st.cache_data(ttl=60)
-def load_ocorrencias(projeto_id: int):
+@st.cache_data(ttl=30)
+def load_tramitacoes():
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query("""
-        SELECT data, descricao, procedimento, relacionado, estado, parecer
-        FROM ocorrencia
-        WHERE projeto_id = ?
-        ORDER BY data DESC
-    """, conn, params=(projeto_id,))
+        SELECT t.*, p.designacao
+        FROM tramitacao t
+        LEFT JOIN projeto p ON p.id = t.projeto_id
+        ORDER BY t.data DESC
+    """, conn)
     conn.close()
     return df
 
-@st.cache_data(ttl=60)
-def load_execucao_fisica(projeto_id: int):
+@st.cache_data(ttl=30)
+def load_ocorrencias(projeto_id=None):
+    conn = sqlite3.connect(DB_PATH)
+    if projeto_id is None:
+        df = pd.read_sql_query("""
+            SELECT o.*, p.designacao
+            FROM ocorrencia o LEFT JOIN projeto p ON p.id = o.projeto_id
+            ORDER BY o.data DESC
+        """, conn)
+    else:
+        df = pd.read_sql_query("""
+            SELECT * FROM ocorrencia WHERE projeto_id = ? ORDER BY data DESC
+        """, conn, params=(projeto_id,))
+    conn.close()
+    return df
+
+@st.cache_data(ttl=30)
+def load_execucao(projeto_id):
+    conn = sqlite3.connect(DB_PATH)
+    df = pd.read_sql_query(
+        "SELECT tipo, adjudicado, realizado FROM execucao_fisica WHERE projeto_id = ?",
+        conn, params=(projeto_id,),
+    )
+    conn.close()
+    return df
+
+@st.cache_data(ttl=30)
+def load_atencao_manual():
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query("""
-        SELECT tipo, adjudicado, realizado, pct
-        FROM execucao_fisica
-        WHERE projeto_id = ?
-    """, conn, params=(projeto_id,))
+        SELECT a.*, p.designacao
+        FROM atencao_manual a LEFT JOIN projeto p ON p.id = a.projeto_id
+        ORDER BY a.prioridade, a.created DESC
+    """, conn)
     conn.close()
     return df
 
@@ -172,7 +123,7 @@ def format_euro(value):
         if value is None or pd.isna(value):
             return "—"
         return f"€ {float(value):,.0f}".replace(",", " ")
-    except (TypeError, ValueError):
+    except Exception:
         return "—"
 
 def format_pct(value):
@@ -180,13 +131,13 @@ def format_pct(value):
         if value is None or pd.isna(value):
             return "—"
         return f"{float(value) * 100:.1f}%"
-    except (TypeError, ValueError):
+    except Exception:
         return "—"
 
 def status_class(estado):
     if not estado:
         return "status-vazio"
-    e = estado.lower()
+    e = str(estado).lower()
     if "execução" in e:
         return "status-em-execucao"
     if "aprovad" in e:
@@ -197,47 +148,87 @@ def status_class(estado):
         return "status-submetida"
     return "status-vazio"
 
-# -------------------------------------------------
-# Sidebar
-# -------------------------------------------------
+def collect_attention(df, tram, attn_manual):
+    items = []
+    for _, r in attn_manual.iterrows():
+        items.append({
+            "pri": int(r["prioridade"]),
+            "tipo": r["tipo"],
+            "id": r["projeto_id"],
+            "titulo": r["titulo"] or r.get("designacao", ""),
+            "detalhe": r["detalhe"],
+            "origem": "Manual",
+        })
+    for _, r in tram.iterrows():
+        if str(r.get("resolvido", "")).lower() in ("não", "nao", "n", ""):
+            dias = r.get("dias") or 0
+            pri = 1 if dias >= 30 else (2 if dias >= 10 else 3)
+            items.append({
+                "pri": pri,
+                "tipo": "Tramitação pendente",
+                "id": r["projeto_id"],
+                "titulo": r.get("designacao") or f"Projeto {r['projeto_id']}",
+                "detalhe": f"{r.get('assunto', '')} · {dias} dias · {r.get('remetente', '')}",
+                "origem": "Auto",
+            })
+    for _, r in df.iterrows():
+        if r["estado"] == "Em execução":
+            pct = r["pct_exec_fisica"] or 0
+            if pct < 0.30 and (r["adjudicado"] or 0) > 0:
+                items.append({
+                    "pri": 2,
+                    "tipo": "Execução física baixa",
+                    "id": r["id"],
+                    "titulo": r["designacao"],
+                    "detalhe": f"Apenas {format_pct(pct)} de execução física com adjudicação de {format_euro(r['adjudicado'])}",
+                    "origem": "Auto",
+                })
+            pct_f = r["pct_exec_financeira"] or 0
+            if abs(pct - pct_f) > 0.15 and pct > 0:
+                items.append({
+                    "pri": 3,
+                    "tipo": "Desvio físico/financeiro",
+                    "id": r["id"],
+                    "titulo": r["designacao"],
+                    "detalhe": f"Física {format_pct(pct)} vs Financeira {format_pct(pct_f)}",
+                    "origem": "Auto",
+                })
+    items.sort(key=lambda x: (x["pri"], str(x["id"])))
+    return items
+
 with st.sidebar:
     st.markdown('<div class="sidebar-title">DGCF | Gestor de Fundos</div>', unsafe_allow_html=True)
     st.caption(f"Versão {VERSION}")
     st.markdown("---")
-    
     pagina = st.radio(
         "Navegação",
-        ["Painel de Controlo", "Candidaturas e Projetos", "Relatórios"],
-        label_visibility="collapsed"
+        ["Painel geral", "Atenção", "Projetos", "Tramitações", "Históricos", "Relatórios"],
+        label_visibility="collapsed",
     )
-    
     st.markdown("---")
-    st.caption("Município de Barcelos")
-    st.caption("Protótipo offline · PRR / Fundos Europeus")
+    st.caption("Município fictício: Vila Nova do Norte")
+    st.caption("Dados 100% de demonstração")
 
-# -------------------------------------------------
-# Carregar dados
-# -------------------------------------------------
 df = load_projetos()
+tram = load_tramitacoes()
+attn_manual = load_atencao_manual()
 
-# -------------------------------------------------
-# PÁGINA: Painel de Controlo
-# -------------------------------------------------
-if pagina == "Painel de Controlo":
-    st.markdown('<div class="main-header">Painel de Controlo</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Visão geral das candidaturas e execução PRR</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="demo-banner">⚠️ <b>Demonstração</b> — Todos os dados são fictícios. Não correspondem a nenhum município real.</div>',
+    unsafe_allow_html=True,
+)
 
-    # KPIs
+if pagina == "Painel geral":
+    st.markdown('<div class="main-header">Painel geral</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Visão global da carteira de candidaturas (dados fictícios)</div>', unsafe_allow_html=True)
+
     total = len(df)
-    em_execucao = len(df[df["estado"] == "Em execução"])
+    em_exec = len(df[df["estado"] == "Em execução"])
     concluidas = len(df[df["estado"] == "Concluída"])
-    aprovadas = len(df[df["estado"] == "Aprovada"])
-
-    # Conversão segura para numérico (evita erros de tipo no Streamlit Cloud)
-    orcamento_total = pd.to_numeric(df["custos_totais"], errors="coerce").sum()
-    fundo_recebido = pd.to_numeric(df["fundo_recebido"], errors="coerce").sum()
-    adiantamentos = pd.to_numeric(df["adiantamentos"], errors="coerce").sum()
-    media_fisica = pd.to_numeric(df["pct_exec_fisica"], errors="coerce").mean()
+    orcamento = pd.to_numeric(df["custos_totais"], errors="coerce").sum()
+    recebido = pd.to_numeric(df["fundo_recebido"], errors="coerce").sum()
+    adiant = pd.to_numeric(df["adiantamentos"], errors="coerce").sum()
+    media_fis = pd.to_numeric(df["pct_exec_fisica"], errors="coerce").mean()
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -245,208 +236,238 @@ if pagina == "Painel de Controlo":
         <div class="kpi-card">
             <div class="kpi-label">Total Projetos</div>
             <div class="kpi-value">{total}</div>
-            <div class="kpi-sub">{em_execucao} em execução · {concluidas} concluídas</div>
-        </div>
-        """, unsafe_allow_html=True)
+            <div class="kpi-sub">{em_exec} em execução · {concluidas} concluídas</div>
+        </div>""", unsafe_allow_html=True)
     with c2:
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-label">Orçamento Total</div>
-            <div class="kpi-value">{format_euro(orcamento_total)}</div>
+            <div class="kpi-value">{format_euro(orcamento)}</div>
             <div class="kpi-sub">Custos totais dos projetos</div>
-        </div>
-        """, unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
     with c3:
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-label">Fundo Recebido</div>
-            <div class="kpi-value">{format_euro(fundo_recebido)}</div>
-            <div class="kpi-sub">Adiantamentos: {format_euro(adiantamentos)}</div>
-        </div>
-        """, unsafe_allow_html=True)
+            <div class="kpi-value">{format_euro(recebido)}</div>
+            <div class="kpi-sub">Adiantamentos: {format_euro(adiant)}</div>
+        </div>""", unsafe_allow_html=True)
     with c4:
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-label">Execução Física Média</div>
-            <div class="kpi-value">{format_pct(media_fisica)}</div>
+            <div class="kpi-value">{format_pct(media_fis)}</div>
             <div class="kpi-sub">Média de todos os projetos</div>
-        </div>
-        """, unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
+    col_a, col_b = st.columns(2)
 
-    # Projetos em execução (destaque)
-    st.subheader("Projetos em execução")
-    df_exec = df[df["estado"] == "Em execução"].sort_values("pct_exec_fisica", ascending=False)
-
-    if df_exec.empty:
-        st.info("Não existem projetos em execução neste momento.")
-    else:
+    with col_a:
+        st.subheader("Projetos em execução")
+        df_exec = df[df["estado"] == "Em execução"].sort_values("pct_exec_fisica", ascending=False)
         for _, row in df_exec.iterrows():
-            pct = row["pct_exec_fisica"] * 100 if pd.notna(row["pct_exec_fisica"]) else 0
-            st.markdown(f"""
-            <div class="project-card">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                    <div>
-                        <div style="font-weight:600; font-size:1.05rem; color:#0f172a;">{row['designacao']}</div>
-                        <div style="font-size:0.85rem; color:#64748b; margin-top:0.2rem;">
-                            ID {row['id']} · {row['programa'] or '—'}
-                        </div>
-                    </div>
-                    <span class="status-badge status-em-execucao">Em execução</span>
-                </div>
-                <div style="display:flex; gap:2rem; margin-top:0.9rem; font-size:0.9rem;">
-                    <div><span style="color:#64748b;">Orçamento</span><br><strong>{format_euro(row['custos_totais'])}</strong></div>
-                    <div><span style="color:#64748b;">Adjudicado</span><br><strong>{format_euro(row['adjudicado'])}</strong></div>
-                    <div><span style="color:#64748b;">Recebido</span><br><strong>{format_euro(row['fundo_recebido'])}</strong></div>
-                    <div><span style="color:#64748b;">Exec. Física</span><br><strong>{format_pct(row['pct_exec_fisica'])}</strong></div>
-                </div>
-                <div class="progress-bar-bg">
-                    <div class="progress-bar-fill" style="width:{min(pct,100)}%;"></div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            pct_val = row["pct_exec_fisica"]
+            progress_value = 0.0 if pd.isna(pct_val) else max(0.0, min(float(pct_val), 1.0))
+            st.markdown(f"**{row['designacao']}**")
+            st.caption(f"ID {row['id']} · {row['programa'] or '—'}")
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Orçamento", format_euro(row["custos_totais"]))
+            m2.metric("Recebido", format_euro(row["fundo_recebido"]))
+            m3.metric("Exec. física", format_pct(row["pct_exec_fisica"]))
+            st.progress(progress_value)
+            st.markdown("---")
 
-# -------------------------------------------------
-# PÁGINA: Candidaturas e Projetos
-# -------------------------------------------------
-elif pagina == "Candidaturas e Projetos":
-    st.markdown('<div class="main-header">Candidaturas e Projetos</div>', unsafe_allow_html=True)
+    with col_b:
+        st.subheader("Tramitações por acompanhar")
+        pendentes = tram[tram["resolvido"].str.lower().isin(["não", "nao", "n"]) | tram["resolvido"].isna()]
+        if pendentes.empty:
+            st.info("Não existem tramitações pendentes.")
+        else:
+            for _, r in pendentes.iterrows():
+                st.markdown(f"**{r.get('designacao', '')}**")
+                st.caption(f"{r.get('data', '')} · {r.get('remetente', '')} · {r.get('dias', 0)} dias")
+                st.write(r.get("assunto", ""))
+                st.markdown("---")
+
+elif pagina == "Atenção":
+    st.markdown('<div class="main-header">Atenção</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Situações a acompanhar / que podem exigir intervenção</div>', unsafe_allow_html=True)
+
+    items = collect_attention(df, tram, attn_manual)
+    st.caption(f"{len(items)} itens de atenção")
+
+    if not items:
+        st.success("Nenhum item de atenção no momento.")
+    else:
+        for it in items:
+            pri_html = f'<span class="pri-{it["pri"]}">P{it["pri"]}</span>'
+            st.markdown(
+                f"{pri_html} &nbsp; **{it['tipo']}** &nbsp;·&nbsp; ID {it['id']} &nbsp;·&nbsp; "
+                f"<span style='color:#64748b;font-size:0.8rem'>{it['origem']}</span>",
+                unsafe_allow_html=True,
+            )
+            st.markdown(f"**{it['titulo']}**")
+            st.write(it["detalhe"])
+            st.markdown("---")
+
+elif pagina == "Projetos":
+    st.markdown('<div class="main-header">Projetos</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Lista completa com filtros e ficha detalhada</div>', unsafe_allow_html=True)
 
-    # Filtros
-    col_f1, col_f2, col_f3 = st.columns([2, 2, 3])
-    with col_f1:
+    c1, c2, c3 = st.columns([2, 2, 3])
+    with c1:
         estados = ["Todos"] + sorted([e for e in df["estado"].dropna().unique().tolist()])
-        filtro_estado = st.selectbox("Estado", estados)
-    with col_f2:
+        f_estado = st.selectbox("Estado", estados)
+    with c2:
         programas = ["Todos"] + sorted([p for p in df["programa"].dropna().unique().tolist()])
-        filtro_programa = st.selectbox("Programa / Investimento", programas)
-    with col_f3:
-        pesquisa = st.text_input("Pesquisar (nome ou ID)", placeholder="Ex: creche, 7822, saúde...")
+        f_programa = st.selectbox("Programa", programas)
+    with c3:
+        pesquisa = st.text_input("Pesquisar (nome ou ID)", placeholder="Ex: creche, 9001, saúde...")
 
-    # Aplicar filtros
-    df_filtrado = df.copy()
-    if filtro_estado != "Todos":
-        df_filtrado = df_filtrado[df_filtrado["estado"] == filtro_estado]
-    if filtro_programa != "Todos":
-        df_filtrado = df_filtrado[df_filtrado["programa"] == filtro_programa]
+    c4, c5 = st.columns(2)
+    with c4:
+        so_exec = st.checkbox("Só com execução física registada")
+    with c5:
+        so_recebido = st.checkbox("Só com fundo recebido > 0")
+
+    df_f = df.copy()
+    if f_estado != "Todos":
+        df_f = df_f[df_f["estado"] == f_estado]
+    if f_programa != "Todos":
+        df_f = df_f[df_f["programa"] == f_programa]
     if pesquisa:
         q = pesquisa.lower()
-        df_filtrado = df_filtrado[
-            df_filtrado["designacao"].str.lower().str.contains(q, na=False) |
-            df_filtrado["codigo"].astype(str).str.contains(q, na=False) |
-            df_filtrado["programa"].str.lower().str.contains(q, na=False)
+        df_f = df_f[
+            df_f["designacao"].str.lower().str.contains(q, na=False)
+            | df_f["codigo"].astype(str).str.contains(q, na=False)
+            | df_f["programa"].str.lower().str.contains(q, na=False)
         ]
+    if so_exec:
+        df_f = df_f[df_f["pct_exec_fisica"].fillna(0) > 0]
+    if so_recebido:
+        df_f = df_f[df_f["fundo_recebido"].fillna(0) > 0]
 
-    st.caption(f"{len(df_filtrado)} projeto(s) encontrado(s)")
+    st.caption(f"{len(df_f)} projeto(s) encontrado(s)")
 
-    # Lista de projetos
-    for _, row in df_filtrado.iterrows():
+    for _, row in df_f.iterrows():
         estado = row["estado"] or "Sem estado"
         cls = status_class(row["estado"])
-        # Valor seguro para a barra de progresso (0.0 a 1.0)
         pct_val = row["pct_exec_fisica"]
-        if pd.isna(pct_val) or pct_val is None:
-            progress_value = 0.0
-        else:
-            progress_value = max(0.0, min(float(pct_val), 1.0))
+        progress_value = 0.0 if pd.isna(pct_val) else max(0.0, min(float(pct_val), 1.0))
 
         with st.expander(f"**{row['designacao']}**  ·  ID {row['id']}  ·  {estado}"):
-            c1, c2 = st.columns([2, 1])
-
-            with c1:
-                st.markdown(f"""
-                **Programa:** {row['programa'] or '—'}  
-                **Aviso:** {row['aviso'] or '—'}  
-                **Área:** {row['area'] or '—'}
-                """)
-
+            left, right = st.columns([2, 1])
+            with left:
+                st.markdown(f"**Programa:** {row['programa'] or '—'}  \n**Aviso:** {row['aviso'] or '—'}  \n**Área:** {row['area'] or '—'}")
                 st.markdown("##### Execução Financeira")
                 m1, m2, m3, m4 = st.columns(4)
                 m1.metric("Custos totais", format_euro(row["custos_totais"]))
                 m2.metric("Adjudicado", format_euro(row["adjudicado"]))
                 m3.metric("Fundo recebido", format_euro(row["fundo_recebido"]))
                 m4.metric("Adiantamentos", format_euro(row["adiantamentos"]))
-
                 st.markdown("##### Execução Física e Financeira")
                 p1, p2, p3 = st.columns(3)
                 p1.metric("% Exec. Física", format_pct(row["pct_exec_fisica"]))
                 p2.metric("% Exec. Financeira", format_pct(row["pct_exec_financeira"]))
                 p3.metric("% Adiantamento", format_pct(row["pct_adiantamento"]))
-
-            with c2:
+            with right:
                 st.markdown(f'<span class="status-badge {cls}">{estado}</span>', unsafe_allow_html=True)
                 st.progress(progress_value, text=f"Execução física: {format_pct(row['pct_exec_fisica'])}")
 
-            # Histórico de ocorrências
+            exec_df = load_execucao(int(row["id"]))
+            if not exec_df.empty:
+                st.markdown("##### Detalhe execução física")
+                st.dataframe(
+                    exec_df.rename(columns={"tipo": "Tipo", "adjudicado": "Adjudicado (€)", "realizado": "Realizado (€)"}),
+                    use_container_width=True, hide_index=True,
+                )
+
             ocorr = load_ocorrencias(int(row["id"]))
             if not ocorr.empty:
                 st.markdown("##### Histórico de ocorrências")
                 st.dataframe(
-                    ocorr.rename(columns={
-                        "data": "Data",
-                        "descricao": "Descrição",
-                        "procedimento": "Procedimento",
-                        "relacionado": "Relacionado",
-                        "estado": "Estado",
-                        "parecer": "Parecer"
-                    }),
-                    use_container_width=True,
-                    hide_index=True
-                )
-            else:
-                st.caption("Sem histórico de ocorrências registado para este projeto.")
-
-            # Execução física detalhada
-            exec_fis = load_execucao_fisica(int(row["id"]))
-            if not exec_fis.empty:
-                st.markdown("##### Detalhe execução física")
-                st.dataframe(
-                    exec_fis.rename(columns={
-                        "tipo": "Tipo",
-                        "adjudicado": "Adjudicado (€)",
-                        "realizado": "Realizado (€)",
-                        "pct": "%"
-                    }),
-                    use_container_width=True,
-                    hide_index=True
+                    ocorr[["data", "descricao", "procedimento", "relacionado", "estado", "parecer"]].rename(
+                        columns={
+                            "data": "Data", "descricao": "Descrição", "procedimento": "Procedimento",
+                            "relacionado": "Relacionado", "estado": "Estado", "parecer": "Parecer",
+                        }
+                    ),
+                    use_container_width=True, hide_index=True,
                 )
 
-# -------------------------------------------------
-# PÁGINA: Relatórios
-# -------------------------------------------------
+elif pagina == "Tramitações":
+    st.markdown('<div class="main-header">Tramitações</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Registo de movimentos e processos com as autoridades de gestão</div>', unsafe_allow_html=True)
+
+    filtro_res = st.selectbox("Resolvido", ["Todos", "Pendentes", "Resolvidos"])
+    t = tram.copy()
+    if filtro_res == "Pendentes":
+        t = t[t["resolvido"].str.lower().isin(["não", "nao", "n"]) | t["resolvido"].isna()]
+    elif filtro_res == "Resolvidos":
+        t = t[t["resolvido"].str.lower() == "sim"]
+
+    st.caption(f"{len(t)} registo(s)")
+    if t.empty:
+        st.info("Sem tramitações para os filtros selecionados.")
+    else:
+        show = t[["data", "projeto_id", "designacao", "remetente", "assunto", "processo", "dias", "resolvido", "despacho"]].copy()
+        show.columns = ["Data", "ID", "Projeto", "Remetente", "Assunto", "Processo", "Dias", "Resolvido", "Despacho"]
+        st.dataframe(show, use_container_width=True, hide_index=True)
+
+elif pagina == "Históricos":
+    st.markdown('<div class="main-header">Históricos por projeto</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Linha do tempo de eventos e decisões</div>', unsafe_allow_html=True)
+
+    projetos_com_hist = load_ocorrencias()
+    ids = sorted(projetos_com_hist["projeto_id"].dropna().unique().tolist())
+    nomes = {int(r["id"]): r["designacao"] for _, r in df.iterrows()}
+    opcoes = ["Todos"] + [f"{i} — {nomes.get(i, '')}" for i in ids]
+    escolha = st.selectbox("Projeto", opcoes)
+
+    if escolha == "Todos":
+        hist = projetos_com_hist
+    else:
+        pid = int(escolha.split("—")[0].strip())
+        hist = load_ocorrencias(pid)
+
+    if hist.empty:
+        st.info("Sem histórico registado.")
+    else:
+        cols = ["data", "projeto_id", "descricao", "procedimento", "relacionado", "estado", "parecer"]
+        cols = [c for c in cols if c in hist.columns]
+        st.dataframe(
+            hist[cols].rename(columns={
+                "data": "Data", "projeto_id": "ID", "descricao": "Descrição",
+                "procedimento": "Procedimento", "relacionado": "Relacionado",
+                "estado": "Estado", "parecer": "Parecer",
+            }),
+            use_container_width=True, hide_index=True,
+        )
+
 elif pagina == "Relatórios":
-    st.markdown('<div class="main-header">Relatórios e Exportação</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Listagens e exportação para Excel</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">Relatórios</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Resumos e exportação</div>', unsafe_allow_html=True)
 
     st.subheader("Resumo por Estado")
-    resumo_estado = df.groupby("estado", dropna=False).agg(
+    resumo = df.groupby("estado", dropna=False).agg(
         N=("id", "count"),
         Custos=("custos_totais", "sum"),
         Recebido=("fundo_recebido", "sum"),
-        Adiantamentos=("adiantamentos", "sum")
+        Adiantamentos=("adiantamentos", "sum"),
     ).reset_index()
-    resumo_estado["estado"] = resumo_estado["estado"].fillna("(sem estado)")
-    st.dataframe(resumo_estado, use_container_width=True, hide_index=True)
+    resumo["estado"] = resumo["estado"].fillna("(sem estado)")
+    st.dataframe(resumo, use_container_width=True, hide_index=True)
 
     st.subheader("Resumo por Programa")
-    resumo_prog = df.groupby("programa", dropna=False).agg(
+    resumo_p = df.groupby("programa", dropna=False).agg(
         N=("id", "count"),
         Custos=("custos_totais", "sum"),
-        Recebido=("fundo_recebido", "sum")
+        Recebido=("fundo_recebido", "sum"),
     ).reset_index().sort_values("N", ascending=False)
-    resumo_prog["programa"] = resumo_prog["programa"].fillna("(sem programa)")
-    st.dataframe(resumo_prog, use_container_width=True, hide_index=True)
+    resumo_p["programa"] = resumo_p["programa"].fillna("(sem programa)")
+    st.dataframe(resumo_p, use_container_width=True, hide_index=True)
 
-    st.subheader("Exportar dados")
+    st.subheader("Exportar")
     csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        label="Descarregar lista completa (CSV)",
-        data=csv,
-        file_name="dgcf_projetos_prr.csv",
-        mime="text/csv"
-    )
-
-    st.caption("Os dados são exportados a partir da base de dados local SQLite.")
-    st.caption("Os dados são exportados a partir da base de dados local SQLite.")
+    st.download_button("Descarregar lista de projetos (CSV)", csv, "dgcf_demo_projetos.csv", "text/csv")
