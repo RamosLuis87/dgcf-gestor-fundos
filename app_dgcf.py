@@ -133,6 +133,15 @@ def load_projetos():
         ORDER BY designacao
     """, conn)
     conn.close()
+    # Garantir tipos numéricos (evita TypeError no Streamlit Cloud)
+    num_cols = [
+        "custos_totais", "adjudicado", "invest_elegivel", "fundo_previsto",
+        "fundo_solicitado", "fundo_recebido", "adiantamentos",
+        "pct_adiantamento", "pct_exec_fisica", "pct_exec_financeira", "pct_inv_elegivel"
+    ]
+    for col in num_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
 @st.cache_data(ttl=60)
@@ -218,10 +227,11 @@ if pagina == "Painel de Controlo":
     concluidas = len(df[df["estado"] == "Concluída"])
     aprovadas = len(df[df["estado"] == "Aprovada"])
 
-    orcamento_total = df["custos_totais"].sum(skipna=True)
-    fundo_recebido = df["fundo_recebido"].sum(skipna=True)
-    adiantamentos = df["adiantamentos"].sum(skipna=True)
-    media_fisica = df["pct_exec_fisica"].mean(skipna=True)
+    # Conversão segura para numérico (evita erros de tipo no Streamlit Cloud)
+    orcamento_total = pd.to_numeric(df["custos_totais"], errors="coerce").sum()
+    fundo_recebido = pd.to_numeric(df["fundo_recebido"], errors="coerce").sum()
+    adiantamentos = pd.to_numeric(df["adiantamentos"], errors="coerce").sum()
+    media_fisica = pd.to_numeric(df["pct_exec_fisica"], errors="coerce").mean()
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
