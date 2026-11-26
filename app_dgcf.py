@@ -168,14 +168,20 @@ def load_execucao_fisica(projeto_id: int):
     return df
 
 def format_euro(value):
-    if pd.isna(value) or value is None:
+    try:
+        if value is None or pd.isna(value):
+            return "—"
+        return f"€ {float(value):,.0f}".replace(",", " ")
+    except (TypeError, ValueError):
         return "—"
-    return f"€ {value:,.0f}".replace(",", " ")
 
 def format_pct(value):
-    if pd.isna(value) or value is None:
+    try:
+        if value is None or pd.isna(value):
+            return "—"
+        return f"{float(value) * 100:.1f}%"
+    except (TypeError, ValueError):
         return "—"
-    return f"{value * 100:.1f}%"
 
 def status_class(estado):
     if not estado:
@@ -339,7 +345,12 @@ elif pagina == "Candidaturas e Projetos":
     for _, row in df_filtrado.iterrows():
         estado = row["estado"] or "Sem estado"
         cls = status_class(row["estado"])
-        pct = (row["pct_exec_fisica"] or 0) * 100
+        # Valor seguro para a barra de progresso (0.0 a 1.0)
+        pct_val = row["pct_exec_fisica"]
+        if pd.isna(pct_val) or pct_val is None:
+            progress_value = 0.0
+        else:
+            progress_value = max(0.0, min(float(pct_val), 1.0))
 
         with st.expander(f"**{row['designacao']}**  ·  ID {row['id']}  ·  {estado}"):
             c1, c2 = st.columns([2, 1])
@@ -366,7 +377,7 @@ elif pagina == "Candidaturas e Projetos":
 
             with c2:
                 st.markdown(f'<span class="status-badge {cls}">{estado}</span>', unsafe_allow_html=True)
-                st.progress(min(pct / 100, 1.0), text=f"Execução física: {format_pct(row['pct_exec_fisica'])}")
+                st.progress(progress_value, text=f"Execução física: {format_pct(row['pct_exec_fisica'])}")
 
             # Histórico de ocorrências
             ocorr = load_ocorrencias(int(row["id"]))
@@ -437,4 +448,5 @@ elif pagina == "Relatórios":
         mime="text/csv"
     )
 
+    st.caption("Os dados são exportados a partir da base de dados local SQLite.")
     st.caption("Os dados são exportados a partir da base de dados local SQLite.")
