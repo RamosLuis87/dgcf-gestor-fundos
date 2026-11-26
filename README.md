@@ -1,42 +1,32 @@
+[README.md](https://github.com/user-attachments/files/35464923/README.md)
 # DGCF | Gestor de Fundos
 
-**Versão P001 · 0.1**  
-Protótipo de gestão de candidaturas e execução de projetos PRR / Fundos Europeus  
-Município de Barcelos
+**Versão P002 · 0.2 (Demonstração)**  
+Protótipo web alinhado com a informação da versão desktop Tkinter 0.15  
+**Dados 100% fictícios** — Município inventado "Vila Nova do Norte"
 
-## Descrição
+## Separadores
 
-Aplicação offline/web para acompanhamento de candidaturas a fundos europeus (PRR), com:
+- **Painel geral** — KPIs + projetos em execução + tramitações pendentes
+- **Atenção** — alertas automáticos e manuais (prioridade P1–P3)
+- **Projetos** — lista com filtros + ficha detalhada (financeira, física, histórico)
+- **Tramitações** — movimentos com autoridades de gestão
+- **Históricos** — linha do tempo de eventos por projeto
+- **Relatórios** — resumos e exportação CSV
 
-- Painel de controlo (KPIs)
-- Lista de projetos com filtros
-- Ficha detalhada de cada projeto (execução física e financeira + histórico)
-- Relatórios e exportação CSV
-
-## Como correr localmente
+## Correr localmente
 
 ```bash
 pip install -r requirements.txt
 streamlit run app_dgcf.py
 ```
 
-## Deploy no Streamlit Community Cloud (teste)
+## Deploy Streamlit Cloud
 
-1. Criar repositório no GitHub e enviar estes ficheiros
-2. Ir a [share.streamlit.io](https://share.streamlit.io)
-3. "New app" → escolher o repositório → Main file path: `app_dgcf.py`
-4. Deploy
+Main file path: `app_dgcf.py`  
+Ficheiros necessários: `app_dgcf.py`, `dgcf_demo_dummy.db`, `requirements.txt`
 
-**Nota:** Nesta versão de teste a base de dados SQLite é apenas de leitura. Em ambiente de produção recomenda-se servidor interno da Câmara.
+## Nota
 
-## Ficheiros
-
-| Ficheiro | Descrição |
-|----------|-----------|
-| `app_dgcf.py` | Aplicação principal |
-| `dgcf_gestor_fundos.db` | Base de dados SQLite (76 projetos) |
-| `requirements.txt` | Dependências |
-
-## Versão
-
-P001 · 0.1 — Novembro 2026
+Esta versão serve **apenas para demonstração**.  
+Para trabalho real na Câmara utilizar a versão desktop Tkinter (offline).
